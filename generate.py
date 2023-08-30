@@ -2,6 +2,7 @@
 from lib.proc_init_utils import initialise_tpu
 # from lib.proc_init_utils import initialise_gpu; initialise_gpu()
 
+import time
 import jax
 import jax.numpy as jnp
 import jax.random as rand
@@ -39,6 +40,8 @@ def main() -> None:
     # top_k_config = TopKGenerationConfig(eos_token_id=tokenizer.eos_token_id, max_length=128, top_k=10)
     top_p_config = TopPGenerationConfig(eos_token_id=tokenizer.eos_token_id, max_length=128, top_p=0.9)
 
+    start_time = time.perf_counter()
+
     inputs = tokenizer(sentences, max_length=top_p_config.max_length, padding='max_length', return_tensors='jax')
     seq = inputs.input_ids.astype(jnp.uint16)
     attn_mask = inputs.attention_mask.astype(jnp.bool_)
@@ -55,6 +58,11 @@ def main() -> None:
     if is_process_0:
         for decoded_text in decoded_texts:
             print(decoded_text, end='\n\n')
+
+    elapsed = time.perf_counter() - start_time
+    n_tokens = sum(map(len, generated_seq))
+    tp = n_tokens / elapsed
+    print(f"{n_tokens} tokens in {elapsed} seconds, throughput {tp} tokens/second")
 
 if __name__ == '__main__':
     main()
